@@ -1,7 +1,5 @@
-from subprocess import Popen, PIPE
-from recognition.core.face.config.config import Config
-import shutil
 import os
+from subprocess import Popen, PIPE
 
 openfaceDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 pathAlignedImage = os.path.join(os.path.expanduser('~'), 'upload', 'aligned-images')

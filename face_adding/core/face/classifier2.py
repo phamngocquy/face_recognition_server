@@ -2,11 +2,11 @@ import argparse
 import sys
 import time
 from operator import itemgetter
-import os
+import openface
 import dlib
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-from recognition.core.face.generateRepresentations import *
+from face_adding.core.face.generateRepresentations import *
 
 np.set_printoptions(precision=2)
 import pandas as pd
@@ -20,25 +20,18 @@ from sklearn.grid_search import GridSearchCV
 import face_recognition
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from face_adding.core.face.config.config import Config
 
 fileDir = os.path.dirname(os.path.realpath(__file__))
-modelDir = os.path.join(fileDir, '..', 'models')
+modelDir = os.path.join(fileDir, '../augimg', '../models')
 dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
 
-if __name__ == '__main__':
-    print(fileDir)
-    print(modelDir)
-    print(dlibModelDir)
-    print(openfaceModelDir)
-
-    print(os.path.exists(modelDir))
-    print(os.path.exists(dlibModelDir))
-    print(os.path.exists(fileDir))
-    print(os.path.exists(openfaceModelDir))
+pathGenerateRep = os.path.join(os.path.expanduser('~'), 'upload', 'generated-embeddings')
+classifierModel = os.path.join(pathGenerateRep, 'classifier.pkl')
 
 
-def detect(args, img, le, multiple, clf, font):
+def detect(args, img, le, multiple, clf, font, align, net):
     face_locations = face_recognition.face_locations(img, number_of_times_to_upsample=0, model="cnn")
     rgbImg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for face_location in face_locations:
@@ -71,7 +64,7 @@ def detect(args, img, le, multiple, clf, font):
             print("  + Distance from the mean: {}".format(dist))
 
 
-def infer(args, multiple=True):
+def infer(args, align, net, multiple=True):
     with open(args.classifierModel, 'rb') as f:
         if sys.version_info[0] < 3:
             (le, clf) = pickle.load(f)
@@ -82,12 +75,12 @@ def infer(args, multiple=True):
     fps = 0
     start_time = time.time()
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
-    video_capture = cv2.VideoCapture(Config.videoPath)
+    video_capture = cv2.VideoCapture(0)
     while video_capture.isOpened():
         det, img = video_capture.read()
         frame_count += 1
 
-        detect(args, img, le, multiple, clf, font)
+        detect(args, img, le, multiple, clf, font, align, net)
 
         if time.time() - start_time > 1:
             fps = float("{0:.3}".format(frame_count / (time.time() - start_time)))
@@ -178,21 +171,20 @@ def init():
                                    'DecisionTree',
                                    'GaussianNB'], help='The type of classifier to ues.', default="LinearSvm")
     myParser.add_argument('--workDir', type=str, help='Path to store Model,csv file',
-                          default='./data/generated-embeddings')
+                          default=pathGenerateRep)
     myParser.add_argument('--classifierModel', type=str,
-                          default='./data/generated-embeddings/classifier.pkl')
+                          default=classifierModel)
     myParser.add_argument('--ldaDim', type=int, default=-1)
     myArgs = myParser.parse_args()
 
     align = openface.AlignDlib(myArgs.dlibFacePredictor)
     net = openface.TorchNeuralNet(myArgs.networkModel, imgDim=myArgs.imgDim,
                                   cuda=myArgs.cuda)
-
     return myArgs, align, net
 
 
 if __name__ == '__main__':
     args, align, net = init()
-    infer(args)
+    infer(args, align, net)
     # doGeneratePres()
-    # train(args)
+    train(args)

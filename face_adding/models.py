@@ -11,13 +11,13 @@ class Person(models.Model):
 
 
 class Image(models.Model):
-    path = models.TextField(null=False, blank=False)
+    path = models.TextField(null=False, blank=False, unique=True)
     aligned = models.BooleanField(default=False)
     create_time = models.DateTimeField(auto_now_add=True, editable=False, null=False, blank=False)
     person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name='person_id_image')
 
 
 class ImageAligned(models.Model):
-    path = models.TextField(null=False, blank=False)
+    path = models.TextField(null=False, blank=False, unique=True)
     create_time = models.DateTimeField(auto_now_add=True, editable=False, null=False, blank=False)
     image = models.ForeignKey(Image, on_delete=models.CASCADE, related_name='image_aligned_id_image')

@@ -1,11 +1,9 @@
 from django.http import HttpResponse
 from django.shortcuts import render
 from .forms import UploadFileForm
-from django.template import loader
-from face_adding.utils.config import Config
-from face_adding.models import *
-from face_adding.core.augment import *
-from recognition.core.face.alignImage import *
+from face_adding.core.face.classifier2 import *
+from face_adding.core.augimg.augment import *
+from face_adding.core.face.alignImage import *
 import os
 
 
@@ -45,4 +43,4 @@ def handle_uploaded_file(img, name):
 
 
 def replaceSpace(s):
-    return s.replace(' ', '-')
+    return s.replace(' ', '')
