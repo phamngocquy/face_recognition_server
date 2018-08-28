@@ -105,4 +105,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 /__pycache__/
-.idea/vcs.xml
+face_adding/migrations/0001_initial.py
+.idea
+shape_predictor_68_face_landmarks.dat

@@ -29,6 +29,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'face_adding',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -78,7 +79,7 @@ FILE_UPLOAD_HANDLERS = [
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'tekoface',
+        'NAME': 'face',
         'HOST': '127.0.0.1',
         'POST': '3306',
         'USER': 'tekoface',

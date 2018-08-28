@@ -4,7 +4,7 @@ import cv2
 import face_recognition
 import os
 
-imageDataPath = os.path.join(os.path.expanduser('~'), 'training-images')
+imageDataPath = os.path.join(os.path.expanduser('~'), 'upload', 'training-images')
 
 
 def video_face_recognition(storePath, baseName):
