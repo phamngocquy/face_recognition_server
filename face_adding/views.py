@@ -28,11 +28,10 @@ def upload_file(request):
 
 
 def handle_uploaded_file(img, name):
-    store_path = os.path.join(Config.storePath, name)
-
+    store_path = os.path.join(Config.storePath, replaceSpace(name))
     if not os.path.exists(store_path):
         os.makedirs(store_path)
-    image_path = os.path.join(Config.storePath, name, img.name)
+    image_path = os.path.join(Config.storePath, replaceSpace(name), img.name)
 
     with open(image_path, "wb+") as file:
         for chunk in img.chunks():
@@ -43,3 +42,7 @@ def handle_uploaded_file(img, name):
 
     # align image of person
     AlignImage.make(name)
+
+
+def replaceSpace(s):
+    return s.replace(' ', '-')

@@ -34,10 +34,10 @@ class ImgAugment(object):
                 )
             ])
             images_aug = seq.augment_images(images)
-            store_path = os.path.join(Config.storePath, person.name)
+            store_path = os.path.join(Config.storePath, person.name.replace(' ', '-'))
             for index, img in enumerate(images_aug):
                 img_path = "{}/{}.jpg".format(store_path,
-                                              person.name.replace(' ', '') + str(datetime.now().microsecond))
+                                              person.name.replace(' ', '-') + str(datetime.now().microsecond))
                 cv2.imwrite(img_path, img)
                 img = Image(path=img_path, person_id=person.id)
                 img.save()

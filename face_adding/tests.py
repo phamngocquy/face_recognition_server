@@ -17,4 +17,7 @@ if __name__ == '__main__':
     # images = Image.objects.filter(person_id=7)
     # for i in images:
     #     print(i.path)
-    AlignImage.make("Phạm Ngọc")
+    # AlignImage.make("Phạm Ngọc Quý")
+
+    if os.path.exists("/home/quypn/upload/aligned-images/Phạm-Ngọc-Quý/quy.jpg"):
+        print("True")

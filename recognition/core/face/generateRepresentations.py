@@ -1,30 +1,27 @@
 from subprocess import Popen, PIPE
-from face.alignImage import *
-from face.config.config import Config
+from recognition.core.face.config.config import Config
 import shutil
+import os
+
+openfaceDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+pathAlignedImage = os.path.join(os.path.expanduser('~'), 'upload', 'aligned-images')
+batchRepresent = os.path.join(openfaceDir, 'batch-represent', 'main.lua')
 
 
 def batch_represent():
-    cmd = [Config.batchRepresent, "-data",
-           Config.alignedImagePath,
+    pathGenerateRep = os.path.join(os.path.expanduser('~'), 'upload', 'generated-embeddings')
+    if not os.path.exists(pathGenerateRep):
+        os.makedirs(pathGenerateRep)
+
+    cmd = [batchRepresent, "-data",
+           pathAlignedImage,
            "-outDir",
-           Config.repsImagePath, '-cuda', '-cache']
+           pathGenerateRep]
     p = Popen(cmd, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     (out, err) = p.communicate()
     print(out)
     print(err)
 
 
-def clean():
-    if os.path.exists(Config.alignedCache):
-        os.remove(Config.alignedCache)
-        print("=>>> Clean cache align images.")
-    if os.path.exists(Config.repsImagePath):
-        shutil.rmtree(Config.repsImagePath)
-        print("=>>> Delete old model.")
-
-
-def doGeneratePres():
-    clean()
-    doAlignImage()
+if __name__ == '__main__':
     batch_represent()

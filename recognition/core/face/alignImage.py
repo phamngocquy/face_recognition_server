@@ -20,13 +20,12 @@ pathAlignedImage = os.path.join(os.path.expanduser('~'), 'upload', 'aligned-imag
 
 
 class AlignImage(object):
-
     @staticmethod
     def make(name):
         try:
             person = Person.objects.filter(name=name)
             person = person.last()
-            store_path = os.path.join(pathAlignedImage, person.name)
+            store_path = os.path.join(pathAlignedImage, person.name.replace(' ', '-'))
             if not os.path.exists(store_path):
                 os.makedirs(store_path)
             images = Image.objects.filter(person_id=person.id)
