@@ -6,7 +6,8 @@ import openface
 import dlib
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-from face_adding.core.face.generateRepresentations import *
+from face_adding.core.face import generateRepresentations
+import os
 
 np.set_printoptions(precision=2)
 import pandas as pd
@@ -28,10 +29,22 @@ dlibModelDir = os.path.join(modelDir, 'dlib')
 openfaceModelDir = os.path.join(modelDir, 'openface')
 
 pathGenerateRep = os.path.join(os.path.expanduser('~'), 'upload', 'generated-embeddings')
-classifierModel = os.path.join(pathGenerateRep, 'classifier.pkl')
+
+args_classifierModel = os.path.join(pathGenerateRep, 'classifier.pkl')
+args_workDir = pathGenerateRep
+args_dlibFacePredictor = os.path.join(dlibModelDir, "shape_predictor_68_face_landmarks.dat")
+args_networkModel = os.path.join(openfaceModelDir, "nn4.small2.v1.t7")
+args_ldaDim = -1
+args_imgDim = 96
+args_classifier = 'LinearSvm'
+args_cuda = True
+align = openface.AlignDlib(args_dlibFacePredictor)
+net = openface.TorchNeuralNet(args_networkModel, imgDim=args_imgDim,
+                              cuda=args_cuda)
+FLAG_EXIT = -1
 
 
-def detect(args, img, le, multiple, clf, font, align, net):
+def detect(img, le, multiple, clf, font):
     face_locations = face_recognition.face_locations(img, number_of_times_to_upsample=0, model="cnn")
     rgbImg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for face_location in face_locations:
@@ -39,7 +52,7 @@ def detect(args, img, le, multiple, clf, font, align, net):
 
         bb = dlib.rectangle(left=left, top=top, right=right, bottom=bottom)
         alignedFace = align.align(
-            args.imgDim,
+            args_imgDim,
             rgbImg,
             bb,
             landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
@@ -51,7 +64,7 @@ def detect(args, img, le, multiple, clf, font, align, net):
         person = le.inverse_transform(maxI)
         confidence = predictions[maxI]
         if multiple:
-            print("Predict {} @ x={} with {:.2f} confidence.".format(person, bbx, confidence))
+            # print("Predict {} @ x={} with {:.2f} confidence.".format(person, bbx, confidence))
             cv2.rectangle(img, (left, top), (right, bottom), (0, 0, 255), 2)
             if confidence > Config.threshold:
                 cv2.putText(img, "{} {:.2f}%".format(person, confidence), (left, bottom + 20), font, 1, (0, 0, 255), 1,
@@ -64,8 +77,8 @@ def detect(args, img, le, multiple, clf, font, align, net):
             print("  + Distance from the mean: {}".format(dist))
 
 
-def infer(args, align, net, multiple=True):
-    with open(args.classifierModel, 'rb') as f:
+def infer(multiple=True):
+    with open(args_classifierModel, 'rb') as f:
         if sys.version_info[0] < 3:
             (le, clf) = pickle.load(f)
         else:
@@ -76,12 +89,10 @@ def infer(args, align, net, multiple=True):
     start_time = time.time()
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
     video_capture = cv2.VideoCapture(0)
-    while video_capture.isOpened():
+    while FLAG_EXIT == 0 and video_capture.isOpened():
         det, img = video_capture.read()
         frame_count += 1
-
-        detect(args, img, le, multiple, clf, font, align, net)
-
+        detect(img, le, multiple, clf, font)
         if time.time() - start_time > 1:
             fps = float("{0:.3}".format(frame_count / (time.time() - start_time)))
             frame_count = 0
@@ -92,10 +103,12 @@ def infer(args, align, net, multiple=True):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+    cv2.destroyAllWindows()
+    exit()
 
-def train(args):
-    # get labels
-    fname = "{}/labels.csv".format(args.workDir)
+
+def train():
+    fname = "{}/labels.csv".format(args_workDir)
     labels = pd.read_csv(fname, header=None).values[:, 1]
     print("labels: ", labels)
     labels = map(itemgetter(1),
@@ -104,7 +117,7 @@ def train(args):
     labels = list(labels)
 
     # get reps
-    fname = "{}/reps.csv".format(args.workDir)
+    fname = "{}/reps.csv".format(args_workDir)
     embeddings = pd.read_csv(fname, header=None).values
 
     le = LabelEncoder().fit(labels)
@@ -112,10 +125,10 @@ def train(args):
     nClasses = len(le.classes_)
     print("Training for {} classes.".format(nClasses))
 
-    if args.classifier == 'LinearSvm':
+    if args_classifier == 'LinearSvm':
         clf = SVC(C=1, kernel='linear', probability=True)
 
-    elif args.classifier == 'GirdSearchSvm':
+    elif args_classifier == 'GirdSearchSvm':
         print("""
                 Warning: In our experiences, using a grid search over SVM hyper-parameters only
                 gives marginally better performance than a linear SVM with C=1 and
@@ -124,25 +137,24 @@ def train(args):
         param_grid = [{'C': [1, 10, 100, 1000], 'kernel': ['linear']},
                       {'C': [1, 10, 100, 1000], 'gamma': [0.001, 0.0001], 'kernel': ['rbf']}]
         clf = GridSearchCV(SVC(C=1, probability=True), param_grid, cv=2)
-    elif args.classifier == 'GMM':  # Doesn't work best
-        print("user: ", GMM)
+    elif args_classifier == 'GMM':  # Doesn't work best
         clf = GMM(n_components=nClasses)
-    elif args.classifier == 'RadialSvm':
+    elif args_classifier == 'RadialSvm':
         # Radial Basis Function kernel
         # works better with C = 1 and gamma = 2
         clf = SVC(C=1, kernel='rbf', probability=True, gamma=2)
-    elif args.classifier == 'DecisionTree':  # Doesn't work best
+    elif args_classifier == 'DecisionTree':  # Doesn't work best
         clf = DecisionTreeClassifier(max_depth=20)
-    elif args.classifier == 'GaussianNB':
+    elif args_classifier == 'GaussianNB':
         clf = GaussianNB()
 
-    if args.ldaDim > 0:
+    if args_ldaDim > 0:
         clf_final = clf
-        clf = Pipeline([('lda', LDA(n_components=args.ldaDim)),
+        clf = Pipeline([('lda', LDA(n_components=args_ldaDim)),
                         ('clf', clf_final)])
 
     clf.fit(embeddings, labelsNum)
-    fName = "{}/classifier.pkl".format(args.workDir)
+    fName = "{}/classifier.pkl".format(args_workDir)
     print("fName", fName)
     print("Saving classifier to '{}'".format(fName))
 
@@ -150,41 +162,12 @@ def train(args):
     pickle.dump((le, clf), f)
 
 
-def init():
-    myParser = argparse.ArgumentParser()
-    myParser.add_argument('--dlibFacePredictor', type=str, help="Path to dlib's face predictor.",
-                          default=os.path.join(dlibModelDir, "shape_predictor_68_face_landmarks.dat"))
+def make_training():
+    generateRepresentations.batch_represent()
+    train()
 
-    myParser.add_argument("--networkModel", type=str, help="Path to Torch networkModel.",
-                          default=os.path.join(openfaceModelDir, "nn4.small2.v1.t7"))
-    myParser.add_argument('--imgDim', type=int, help="Default image dimention", default=96)
+# if __name__ == '__main__':
 
-    # todo
-    myParser.add_argument("--cuda", action="store_true", default=True)
-    # myParser.add_argument("--verbose", action="store_true", default=False)
-
-    myParser.add_argument('--classifier', type=str,
-                          choices=['LinearSvm',
-                                   'GridSearchSvm',
-                                   'GMM',
-                                   'RadialSvm',
-                                   'DecisionTree',
-                                   'GaussianNB'], help='The type of classifier to ues.', default="LinearSvm")
-    myParser.add_argument('--workDir', type=str, help='Path to store Model,csv file',
-                          default=pathGenerateRep)
-    myParser.add_argument('--classifierModel', type=str,
-                          default=classifierModel)
-    myParser.add_argument('--ldaDim', type=int, default=-1)
-    myArgs = myParser.parse_args()
-
-    align = openface.AlignDlib(myArgs.dlibFacePredictor)
-    net = openface.TorchNeuralNet(myArgs.networkModel, imgDim=myArgs.imgDim,
-                                  cuda=myArgs.cuda)
-    return myArgs, align, net
-
-
-if __name__ == '__main__':
-    args, align, net = init()
-    infer(args, align, net)
-    # doGeneratePres()
-    train(args)
+# make_training()
+# make_infer()
+# make_training()

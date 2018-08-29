@@ -9,5 +9,4 @@ class Config(object):
     videoPath = homeDir + "video/therock.mp4"
 
     # accuracy
-    threshold = 0.8
-
+    threshold = 0.4
