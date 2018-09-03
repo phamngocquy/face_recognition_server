@@ -2,28 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Home</title>
 
     {% load staticfiles %}
+    <link rel="icon" href="{% static "images/teko.png" %}" type="image/gif" sizes="16x16">
     <link href="{% static "/bootstrap-4.1.3/css/bootstrap.min.css" %}" rel="stylesheet">
-    <style>
-        body {
-            margin-bottom: 60px;
-        }
-
-        body > .container {
-            padding: 60px 15px 0;
-        }
-
-        .footer > .container {
-            padding-right: 15px;
-            padding-left: 15px;
-        }
-
-        .btn {
-            margin: 5px;
-        }
-    </style>
+    <link href="{% static "/bootstrap-4.1.3/select/css/bootstrap-select.min.css" %}" rel="stylesheet">
+    <link href="{% static  "/vendor/css/custom.css" %}" rel="stylesheet">
 </head>
 <body>
 <header>
@@ -55,24 +40,113 @@
 </header>
 
 <main role="main" class="container">
-    <form method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <table>
-            {{ form.as_table }}
-        </table>
-        <input class="btn btn-primary" type="submit" value="Submit"/>
-    </form>
-    <button class="btn btn-primary" onclick="location.href='{% url 'infer' %}'">Infer</button>
-    <button class="btn btn-primary" onclick="location.href='{% url 'train' %}'">train</button>
+    <section class="center">
+        <div class="message justify-content-center" id="message"></div>
+        <div class="progress-line" id="progress_align"></div>
+        <form method="POST" enctype="multipart/form-data" id="form_up_file" action="{% url "uploadfile" %}">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col" style="margin-top: 5px">
+                    <input type="text" class="form-control" placeholder="Name" id="name" name="name">
+                </div>
+                <div class=" col custom-file" style="margin-top: 5px">
+                    <input type="file" class="custom-file-input" placeholder="Picture" id="validatedCustomFile"
+                           name="picture"/>
+                    <label class="custom-file-label" for="validatedCustomFile" id="file_name">Choose file...</label>
+                </div>
+            </div>
+            <div>
+                <div class="col mgleft">
+                    <select type="text" class="selectpicker" data-live-search="true" title="name" id="slt_name">
+                        {% for person in persons %}
+                            <option value="{{ person.name }}">{{ person.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <input class="btn-custom btn btn-primary btn-mgleft" type="submit" value="Submit"/>
+        </form>
+        <button class="btn-custom btn btn-primary btn-mgleft" id="train">Train</button>
+    </section>
+
+    <div class="container">
+        <div class="row">
+            <div class="col d-flex justify-content-center">
+                <img src="{% url 'video-feed' %}" alt="" style="margin: 0 auto">
+            </div>
+        </div>
+    </div>
 
 </main>
+<script>
 
-{#<footer class="footer">#}
-{#    <div class="container">#}
-{#        <span class="text-muted">Place sticky footer content here.</span>#}
-{#    </div>#}
-{#</footer>#}
+</script>
 {% load staticfiles %}
+<script src="{% static "/jquery/jquery-3.3.1.min.js" %}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.0.4/popper.js"></script>
 <script src="{% static "/bootstrap-4.1.3/js/bootstrap.js" %}"></script>
+<script src="{% static "/bootstrap-4.1.3/select/js/bootstrap-select.min.js" %}"></script>
+<script type="text/javascript">
+
+    $(document).ready(function () {
+        $('#progress_align').hide();
+        $('#message').hide();
+        $('select').selectpicker();
+    });
+
+    function upload(event) {
+        $('#message').hide();
+        $('#progress_align').show();
+        event.preventDefault();
+        var data = new FormData($('#form_up_file').get(0));
+
+        $.ajax({
+            url: $(this).attr('action'),
+            type: $(this).attr('method'),
+            data: data,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                $('#progress_align').hide();
+                $('#message').html(data);
+                $('#message').show();
+
+            }
+        });
+        return false;
+    }
+
+    function training(event) {
+        $('#message').hide();
+        $('#progress_align').show();
+        event.preventDefault();
+        $.ajax({
+            url: "http://127.0.0.1:8000/face/train",
+            method: "POST",
+            success: function (data) {
+                $('#progress_align').hide();
+                $('#message').html(data);
+                $('#message').show();
+            }
+        })
+    }
+
+    $('#slt_name').change(function () {
+
+        $('#name').val($('#slt_name').val())
+    });
+
+    $('#validatedCustomFile').change(function () {
+        $('#file_name').text($('#validatedCustomFile').val())
+
+    });
+
+    $('#train').click(training);
+
+    $(function () {
+        $('#form_up_file').submit(upload);
+    });
+</script>
 </body>
 </html>

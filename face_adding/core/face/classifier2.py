@@ -44,7 +44,7 @@ net = openface.TorchNeuralNet(args_networkModel, imgDim=args_imgDim,
 FLAG_EXIT = -1
 
 
-def detect(img, le, multiple, clf, font):
+def detect(img, le, clf, font):
     face_locations = face_recognition.face_locations(img, number_of_times_to_upsample=0, model="cnn")
     rgbImg = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     for face_location in face_locations:
@@ -56,28 +56,31 @@ def detect(img, le, multiple, clf, font):
             rgbImg,
             bb,
             landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
-        rep = net.forward(alignedFace)
-        rep = rep.reshape(1, -1)
-        bbx = bb.center().x
-        predictions = clf.predict_proba(rep).ravel()
-        maxI = np.argmax(predictions)
-        person = le.inverse_transform(maxI)
-        confidence = predictions[maxI]
-        if multiple:
+        try:
+            rep = net.forward(alignedFace)
+            rep = rep.reshape(1, -1)
+            predictions = clf.predict_proba(rep).ravel()
+            maxI = np.argmax(predictions)
+            person = le.inverse_transform(maxI)
+            confidence = predictions[maxI]
+
             # print("Predict {} @ x={} with {:.2f} confidence.".format(person, bbx, confidence))
             cv2.rectangle(img, (left, top), (right, bottom), (0, 0, 255), 2)
             if confidence > Config.threshold:
-                cv2.putText(img, "{} {:.2f}%".format(person, confidence), (left, bottom + 20), font, 1, (0, 0, 255), 1,
+                cv2.putText(img, "{} {:.2f}%".format(person, confidence), (left, bottom + 20), font, 1, (0, 0, 255),
+                            1,
                             cv2.LINE_AA)
             else:
                 cv2.putText(img, "unknown", (left, bottom + 20), font, 1, (0, 0, 255), 1,
                             cv2.LINE_AA)
-        if isinstance(clf, GMM):
-            dist = np.linalg.norm(rep - clf.means_[maxI])
-            print("  + Distance from the mean: {}".format(dist))
+            if isinstance(clf, GMM):
+                dist = np.linalg.norm(rep - clf.means_[maxI])
+                print("  + Distance from the mean: {}".format(dist))
+        except ValueError:
+            print('error')
 
 
-def infer(multiple=True):
+def infer():
     with open(args_classifierModel, 'rb') as f:
         if sys.version_info[0] < 3:
             (le, clf) = pickle.load(f)
@@ -89,10 +92,10 @@ def infer(multiple=True):
     start_time = time.time()
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
     video_capture = cv2.VideoCapture(0)
-    while FLAG_EXIT == 0 and video_capture.isOpened():
+    while video_capture.isOpened():
         det, img = video_capture.read()
         frame_count += 1
-        detect(img, le, multiple, clf, font)
+        detect(img, le, clf, font)
         if time.time() - start_time > 1:
             fps = float("{0:.3}".format(frame_count / (time.time() - start_time)))
             frame_count = 0
@@ -102,9 +105,21 @@ def infer(multiple=True):
         cv2.imshow("frame", img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
     cv2.destroyAllWindows()
     exit()
+
+
+def getClf():
+    font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+    try:
+        with open(args_classifierModel, 'rb') as f:
+            if sys.version_info[0] < 3:
+                (le, clf) = pickle.load(f)
+            else:
+                (le, clf) = pickle.load(f, encoding='latin1')
+        return le, clf, font
+    except FileNotFoundError:
+        return None, None, None
 
 
 def train():
@@ -166,8 +181,7 @@ def make_training():
     generateRepresentations.batch_represent()
     train()
 
-# if __name__ == '__main__':
 
-# make_training()
-# make_infer()
-# make_training()
+if __name__ == '__main__':
+    # make_training()
+    infer()

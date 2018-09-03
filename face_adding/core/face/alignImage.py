@@ -29,18 +29,19 @@ class AlignImage(object):
                 os.makedirs(store_path)
             images = Image.objects.filter(person_id=person.id)
             for image in images:
-                print("path: ", image.path)
-                bgrImg = cv2.imread(image.path)
-                bb = align.getLargestFaceBoundingBox(bgrImg)
-                alignedFace = align.align(imgDim, bgrImg, bb, landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
-                store_align_path = os.path.join(store_path, os.path.basename(image.path))
-                cv2.imwrite(store_align_path, alignedFace)
+                if not image.aligned:
+                    print("path: ", image.path)
+                    bgrImg = cv2.imread(image.path)
+                    bb = align.getLargestFaceBoundingBox(bgrImg)
+                    alignedFace = align.align(imgDim, bgrImg, bb,
+                                              landmarkIndices=openface.AlignDlib.OUTER_EYES_AND_NOSE)
+                    store_align_path = os.path.join(store_path, os.path.basename(image.path))
+                    cv2.imwrite(store_align_path, alignedFace)
 
-                alignedImg = ImageAligned(path=store_align_path, image_id=image.id)
-                alignedImg.save()
-
-                image.aligned = True
-                image.save()
+                    alignedImg = ImageAligned(path=store_align_path, image_id=image.id)
+                    alignedImg.save()
+                    image.aligned = True
+                    image.save()
 
         except AttributeError:
             print("Person not found!")
